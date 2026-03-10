@@ -66,6 +66,12 @@ python3 server.py
 ```
 After starting both the sides, the user can type in the same of the file and click download.  
 The download process will start and also show the progress with network speed.
+
+Text interface
+![alt text](image-1.png)
+
+After downloading
+![alt text](image.png)
 ---
 
 Architecture:
