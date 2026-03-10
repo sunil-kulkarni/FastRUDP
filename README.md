@@ -74,7 +74,7 @@ After downloading
 ![alt text](image.png)
 ---
 
-Architecture:
+## Architecture:
 ```bash
 Browser / API Client
         │
