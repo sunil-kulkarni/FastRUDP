@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RUDP Transfer Client</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>RUDP Transfer</h1>
+<p class="subtitle">Reliable UDP File Transfer Client</p>
+
+<div class="card">
+
+<form id="downloadForm">
+
+<label>File Name</label>
+<input type="text" id="filename" placeholder="example.txt" required>
+
+<button type="submit">Download File</button>
+
+</form>
+
+<div id="status"></div>
+
+</div>
+
+</div>
+
+<script>
+
+const form = document.getElementById("downloadForm");
+const status = document.getElementById("status");
+
+form.addEventListener("submit", async (e) => {
+
+e.preventDefault();
+
+const filename = document.getElementById("filename").value;
+
+status.innerHTML = "Requesting file...";
+
+try {
+
+const res = await fetch(`/download/${filename}`);
+
+const data = await res.json();
+
+if(data.status === "success"){
+status.innerHTML = "✔ File downloaded successfully";
+}
+else{
+status.innerHTML = "✖ Download failed";
+}
+
+} catch(err){
+
+status.innerHTML = "Server connection failed";
+
+}
+
+});
+
+</script>
+
+</body>
+</html>
