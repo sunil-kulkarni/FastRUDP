@@ -1,10 +1,39 @@
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+# from fastapi import FastAPI
+# from fastapi.responses import HTMLResponse
+# from fastapi.staticfiles import StaticFiles
+# from fastapi.templating import Jinja2Templates
+# from starlette.requests import Request
+
+# from udp_client import request_file
+
+# app = FastAPI()
+
+# templates = Jinja2Templates(directory="templates")
+
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+# @app.get("/", response_class=HTMLResponse)
+# def home(request: Request):
+#     return templates.TemplateResponse("index.html", {"request": request})
+
+
+# @app.get("/download/{filename}")
+# def download(filename: str):
+
+#     success = request_file(filename)
+
+#     if success:
+#         return {"status": "success"}
+#     else:
+#         return {"status": "failed"}
+from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.requests import Request
-
-from udp_client import request_file
+import json
+import asyncio
+from udp_client import download_file
 
 app = FastAPI()
 
@@ -13,17 +42,39 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+@app.get("/")
+async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/download/{filename}")
-def download(filename: str):
+async def download(filename: str):
+    async def event_stream():
+        queue = asyncio.Queue()
 
-    success = request_file(filename)
+        def callback(progress, speed, eta):
+            data = {
+                "progress": progress,
+                "speed": f"{round(speed/1024, 2)} KB/s",
+                "eta": f"{round(eta, 2)} sec"
+            }
+            queue.put_nowait(data)
 
-    if success:
-        return {"status": "success"}
-    else:
-        return {"status": "failed"}
+        # Run download in thread
+        import threading
+        success = [False]
+
+        def run_download():
+            success[0] = download_file(filename, callback)
+            queue.put_nowait({"status": "success" if success[0] else "failed"})
+
+        thread = threading.Thread(target=run_download)
+        thread.start()
+
+        while True:
+            data = await queue.get()
+            yield f"data: {json.dumps(data)}\n\n"
+            if "status" in data:
+                break
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
