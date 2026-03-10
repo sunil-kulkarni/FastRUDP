@@ -1,70 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>RUDP Transfer Client</title>
-<link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastRUDP Client</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-
 <body>
+    <div class="container">
+        <h1>FastRUDP</h1>
+        <p class="subtitle">Reliable UDP File Transfer Client</p>
+        <div class="card">
+            <form id="downloadForm">
+                <label for="filename">File Name</label>
+                <input type="text" id="filename" placeholder="sample.txt" required>
+                <button type="submit">Download File</button>
+            </form>
+            <div id="progressContainer" style="display: none;">
+                <progress id="progressBar" value="0" max="100"></progress>
+                <div id="speed">Speed: 0 KB/s</div>
+                <div id="eta">ETA: 0 sec</div>
+            </div>
+            <div id="status"></div>
+        </div>
+    </div>
+    <script>
+        const form = document.getElementById("downloadForm");
+        const status = document.getElementById("status");
+        const progressContainer = document.getElementById("progressContainer");
+        const progressBar = document.getElementById("progressBar");
+        const speedDiv = document.getElementById("speed");
+        const etaDiv = document.getElementById("eta");
 
-<div class="container">
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const filename = document.getElementById("filename").value;
+            status.innerHTML = "Requesting file from server...";
+            progressContainer.style.display = "block";
+            progressBar.value = 0;
+            speedDiv.innerHTML = "Speed: 0 KB/s";
+            etaDiv.innerHTML = "ETA: 0 sec";
 
-<h1>RUDP Transfer</h1>
-<p class="subtitle">Reliable UDP File Transfer Client</p>
-
-<div class="card">
-
-<form id="downloadForm">
-
-<label>File Name</label>
-<input type="text" id="filename" placeholder="example.txt" required>
-
-<button type="submit">Download File</button>
-
-</form>
-
-<div id="status"></div>
-
-</div>
-
-</div>
-
-<script>
-
-const form = document.getElementById("downloadForm");
-const status = document.getElementById("status");
-
-form.addEventListener("submit", async (e) => {
-
-e.preventDefault();
-
-const filename = document.getElementById("filename").value;
-
-status.innerHTML = "Requesting file...";
-
-try {
-
-const res = await fetch(`/download/${filename}`);
-
-const data = await res.json();
-
-if(data.status === "success"){
-status.innerHTML = "✔ File downloaded successfully";
-}
-else{
-status.innerHTML = "✖ Download failed";
-}
-
-} catch(err){
-
-status.innerHTML = "Server connection failed";
-
-}
-
-});
-
-</script>
-
+            const eventSource = new EventSource(`/download/${filename}`);
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.status === 'success') {
+                    status.innerHTML = "✔ File downloaded successfully";
+                    eventSource.close();
+                } else if (data.status === 'failed') {
+                    status.innerHTML = "✖ Download failed";
+                    eventSource.close();
+                } else {
+                    progressBar.value = data.progress;
+                    speedDiv.innerHTML = `Speed: ${data.speed}`;
+                    etaDiv.innerHTML = `ETA: ${data.eta}`;
+                }
+            };
+            eventSource.onerror = function() {
+                status.innerHTML = "✖ Cannot reach server";
+                eventSource.close();
+            };
+        });
+    </script>
 </body>
 </html>
